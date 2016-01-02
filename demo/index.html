@@ -20,40 +20,56 @@
       span.warning {
         color: red;
       }
-      span.important {
-        color: yellow;
-      }
     </style>
   </head>
   <body unresolved>
-    <span class="warning">1.THE DEMO ONLY WORKS ON YOUR OWN COMPUTER BECAUSE THIS DEMO IS NOT HOSTED ON A HTTPS WEBSITE BUT HERE IS A GIF OF THE RESULT :</span><br/>
-    <span class="important">2.Open your developer console while having fun with this demonstration to fully enjoy it ! :)</span><br/>
-    <button id="drawing">Start/Stop Drawing</button><br/>
-    <button id="getAreas">Get areas</button><br/>
-    <div>
-      <motion-detector
-        height="600"
-        width="800"
-        sensitivity="40"
-        areas='[{"topLeft":[154,272],"bottomRight":[236,362],"name":"Example area"}]'>
-        <video class="source" autoplay></video>
-      </motion-detector>
-    </div>
+    <template is="dom-bind" id="app">
+      <span class="warning">Open your developer console while having fun with this demonstration to fully enjoy it ! :)</span><br/>
+      <button id="drawing">Start/Stop Drawing</button>
+      <button id="getAreas">Get areas</button>
+      <button id="resetAreas">Reset areas</button> | 
+      Sensitivity : <input type="text" value="{{sensitivity::input}}"><br/>
+      <div>
+        <motion-detector
+          height="600"
+          width="800"
+          sensitivity="{{sensitivity}}"
+          areas='{{areas}}'>
+          <video class="source" autoplay></video>
+        </motion-detector>
+      </div>
+    </template>
 
     <script type="text/javascript">
-      var motionDetector = document.querySelector("motion-detector");
+      
+      window.addEventListener('WebComponentsReady', function() {
+        var app = document.querySelector("#app");
+        var motionDetector = document.querySelector("motion-detector");
 
+        app.sensitivity = 40;
+        app.areas = [
+          {
+            "topLeft":[154,272],
+            "bottomRight":[236,362],
+            "name":"Example area"
+          }
+        ]
+      
+        app.$.drawing.addEventListener("click",function(){
+          motionDetector.drawing = !motionDetector.drawing;
+        });
 
-      document.querySelector("#drawing").addEventListener("click",function(){
-        motionDetector.drawing = !motionDetector.drawing;
-      });
+        app.$.getAreas.addEventListener("click",function(){
+          console.dir(motionDetector.areas);
+        });
 
-      document.querySelector("#getAreas").addEventListener("click",function(){
-        console.dir(motionDetector.areas);
-      });
+        app.$.resetAreas.addEventListener("click",function(){
+          app.areas = [];
+        });
 
-      document.addEventListener("move-detected",function(data){
-        console.dir(data.detail);
+        document.addEventListener("move-detected",function(data){
+          console.dir(data.detail);
+        });
       });
 
     </script>
