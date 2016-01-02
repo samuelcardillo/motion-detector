@@ -1,18 +1,22 @@
 {
-  "name": "seed-element",
-  "version": "1.0.6",
+  "name": "motion-detector",
+  "version": "1.0.0",
   "authors": [
-    "Anonymous <anonymous@example.com>"
+    "Samuel LESPES CARDILLO @cyberwarfighte1 <iam@samuelcardillo.com>"
   ],
-  "description": "An element providing a solution to no problem in particular.",
+  "description": "Enabling motion detection on video stream with possibility to add detection areas.",
   "keywords": [
     "web-component",
     "polymer",
-    "seed"
+    "seed",
+    "motion",
+    "motion-detector",
+    "motion detector",
+    "detector"
   ],
-  "main": "seed-element.html",
+  "main": "motion-detector.html",
   "license": "http://polymer.github.io/LICENSE.txt",
-  "homepage": "https://github.com/<USERNAME>/seed-element/",
+  "homepage": "https://github.com/samuelcardillo/motion-detector",
   "ignore": [
     "/.*",
     "/test/"

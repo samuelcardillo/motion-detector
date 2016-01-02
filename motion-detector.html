@@ -1,0 +1,329 @@
+<!--
+  @project        Motion Detector
+  @author         Samuel LESPES CARDILLO (@cyberwarfighte1)
+  @thanks         Special thanks to doodloo for the help on performance improvement.
+-->
+
+<link rel="import" href="../../bower_components/polymer/polymer.html">
+
+<!--
+Enabling motion detection on video stream with possibility to add detection areas.
+
+Example:
+
+    <motion-detector>
+      <video autoplay class="source"></video>
+    </motion-detector>
+
+It also takes attributes for areas, sensitivy and size of stream
+
+Example:
+
+    <motion-detector
+      height="600"
+      width="800"
+      sensitivity="40"
+      areas='[{"topLeft":[154,272],"bottomRight":[236,362],"name":"No name defined"}]'>
+      <video class="source" autoplay></video>
+    </motion-detector>
+
+You can also draw areas of detection by turning `drawing` on `true`. If something is inside of one of these specific areas, the event `motion-detected` will be fired. 
+
+The area drawing take 2 CLICKS. One on the `top left` and one on the `bottom right` of the area you want to cover. After these 2 clicks, the area is automatically added and `drawing` is going back to `false`.
+
+@demo demo/index.html
+@hero hero.svg
+-->
+
+<dom-module id="motion-detector">
+  <style is="custom-style">
+    :host {
+      position: relative;
+    }
+    :host::content.source {
+      width: 1280px;
+      height:  720px;
+      position: absolute;
+    }
+    canvas {
+      position: absolute;
+    }
+    #movesBox {
+      position: absolute;
+      border: 1px solid green;
+    }
+    
+  </style>
+  <template>
+    <content select=".source"></content>
+    <div id="movesBox"></div>
+  </template>
+
+  <script>
+    window.requestAnimFrame = (function() {
+      return window.requestAnimationFrame || window.webkitRequestAnimationFrame || window.mozRequestAnimationFrame || function(callback) {
+        window.setTimeout(callback, 1000 / 60);
+      };
+    })();
+
+    (function() {
+      'use strict';
+      var min   = Math.min;
+      var max   = Math.max;
+      var pow   = Math.pow;
+      var sqrt  = Math.sqrt
+
+      return Polymer({
+        is: 'motion-detector',
+        properties: {
+          /** 
+           * Width of the video source 
+           **/
+          width: {
+            type:   Number,
+            value:  800
+          },
+          /** 
+           * Height of the video source 
+           **/
+          height: {
+            type:   Number,
+            value:  600
+          },
+          /**
+           * Detection color sensibility
+           **/
+          sensitivity: {
+            type:   Number,
+            value:  40
+          },
+          /**
+           * Start the drawing of a detection area when set to `true`.
+           **/
+          drawing: {
+            type:     Boolean,
+            value:    false,
+            observer: "_drawingFunc"
+          },
+          /** 
+           * Contains the detection areas that fire the event "`motion-detected`"
+           **/
+          areas: {
+            type: Array,
+            value: function() { return []; }
+          }
+        },
+
+        /*******************/
+        /** PRIVATE CALLS **/
+        /*******************/
+
+        ready: function() {
+          this._rendering       = false;
+          this._topLeft         = function() { return [ Infinity, Infinity ]; }
+          this._bottomRight     = function() { return [0, 0]; }
+          this._videoSource     = Polymer.dom(this).querySelector('.source');
+          this._videoDest       = this.$.movesBox;
+          
+
+          this._width           = parseInt(this.width.toString().substr(0, this.width.toString().length - 1));
+          this._height          = parseInt(this.height.toString().substr(0, this.height.toString().length - 1));
+
+          this._temp1Canvas = document.createElement('canvas');
+          this._temp1Context = this._temp1Canvas.getContext('2d');
+          this._temp2Canvas = document.createElement('canvas');
+          this._temp2Context = this._temp2Canvas.getContext('2d');
+
+          var myGetUserMedia = navigator.getUserMedia || navigator.webkitGetUserMedia || navigator.mozGetUserMedia || navigator.msGetUserMedia;
+          
+          this.videoSource = this._videoSource;
+          if (myGetUserMedia) {
+            this.videoSource.style.width = this.width + 'px';
+            this.videoSource.style.height = this.height + 'px';
+            myGetUserMedia.call(navigator, {
+              video: true
+            }, (function(localMediaStream) {
+              var vendorURL;
+              vendorURL = window.URL || window.webkitURL;
+              if (navigator.mozGetUserMedia) {
+                this.videoSource.mozSrcObject = localMediaStream;
+                this.videoSource.play();
+              } else {
+                this.videoSource.src = vendorURL.createObjectURL(localMediaStream);
+              }
+              this._CamCaptureImage(this.videoSource);
+              this._rendering = true;
+              this._CoreMain();
+            }).bind(this), console.error);
+          } else {
+            alert('No support found');
+          }
+        },
+
+        /*******************/
+        /** PRIVATE CALLS **/
+        /*******************/
+
+        _CoreMain: function() {
+          var e, error;
+
+          if (this._rendering) {
+            requestAnimFrame(this._CoreMain.bind(this));
+            try {
+              this._CoreRender();
+            } catch (error) {
+              e = error;
+              console.dir(e);
+            }
+          }
+        },
+
+        _CoreRender: function() {
+          var vals;
+
+          this.oldImage = this.currentImage;
+          this.currentImage = this._CamCaptureImage(false);
+
+          if (!this.oldImage || !this.currentImage) {
+            return;
+          }
+
+          vals = this._ImageCompare(this.currentImage, this.oldImage, this._width, this._height);
+          //console.log(vals.bottomRight[0] + " - " + vals.bottomRight[1] + " | " + vals.topLeft[0] + " - " + vals.topLeft[1]);
+          this._topLeft[0] = vals.topLeft[0] * 10;
+          this._topLeft[1] = vals.topLeft[1] * 10;
+          this._bottomRight[0] = vals.bottomRight[0] * 10;
+          this._bottomRight[1] = vals.bottomRight[1] * 10;
+          this._videoDest.style.top = this._topLeft[1] + 'px';
+          this._videoDest.style.left = this._topLeft[0] + 'px';
+          this._videoDest.style.width = this._bottomRight[0] - this._topLeft[0] + 'px';
+          this._videoDest.style.height = this._bottomRight[1] - this._topLeft[1] + 'px';
+
+          this._isInArea(this._topLeft,this._bottomRight);
+
+          this._topLeft = [Infinity, Infinity];
+          this._bottomRight = [0, 0];
+        },
+
+        _CamCaptureImage: function(append) {
+          var canvas, pngImage;
+          canvas = document.createElement('canvas');
+          canvas.width = this.width;
+          canvas.height = this.height;
+          canvas.getContext('2d').drawImage(this.videoSource, 0, 0, this.width, this.height);
+          pngImage = canvas.toDataURL('image/png');
+          if (append) {
+            append.appendChild(canvas);
+          }
+          return canvas;
+        },
+
+        _ImageCompare: function(image1, image2, width, height) {
+          var delta, yOffset;
+          var p1R, p1G, p1B, s1, p2R, p2G, p2B, s2;
+          // We get the different images informations
+          var srcPixels   = this._temp1Context.getImageData(0, 0, width, height).data;
+          var dstPixels   = this._temp2Context.getImageData(0, 0, width, height).data;
+          var length      = width * height;
+          var x1          = 65535; // 65535
+          var y1          = 65535;
+          var x2          = -1;
+          var y2          = -1;
+          var bottomRight = [0, 0];
+          var topLeft     = [Infinity, Infinity];
+
+          if (!image1 || !image2) return;
+
+          // We draw the two different images
+          this._temp1Context.drawImage(image1, 0, 0, width, height);
+          this._temp2Context.drawImage(image2, 0, 0, width, height);
+
+          for (var y=0; y<height; ++y) {
+            yOffset   = y*width*4;
+            for (var x=0; x<width; ++x) {
+              // At this point, get the pixels data
+              p1R   = srcPixels[ yOffset + x*4 + 0];
+              p1G   = srcPixels[ yOffset + x*4 + 1];
+              p1B   = srcPixels[ yOffset + x*4 + 2];
+              p2R   = dstPixels[ yOffset + x*4 + 0];
+              p2G   = dstPixels[ yOffset + x*4 + 1];
+              p2B   = dstPixels[ yOffset + x*4 + 2];
+              s1    = ( p1R + p1G + p1B ) / 3;
+              s2    = ( p2R + p2G + p2B ) / 3;
+              delta = Math.abs(s1 - s2);
+              if (delta > this.sensitivity) {
+                x1    = min(x, x1);
+                y1    = min(y, y1);
+                x2    = max(x, x2);
+                y2    = max(y, y2);
+              }
+            }
+          }
+          return { topLeft: [x1, y1], bottomRight: [x2, y2] };
+        },
+
+        _drawingFunc: function(){
+          if(this.drawing) {
+            this._draw = 0;
+
+            // We create a canvas where you can draw
+            console.log("Drawing started");
+            this._drawingCanvas = document.createElement("canvas");
+            this._drawingCanvas.width = this.width;
+            this._drawingCanvas.height = this.height;
+            this._drawingCanvas.addEventListener("click",function(e){this._addPoint(e)}.bind(this));
+            this._drawingCanvas.setAttribute("id", "drawingCanvas");
+            this._drawingCanvasContext = this._drawingCanvas.getContext('2d');
+            Polymer.dom(this.root).appendChild(this._drawingCanvas);
+            Polymer.dom.flush();
+          } else {
+            // We delete the canvas and register the area
+            console.log("Drawing stopped");
+            if(this._drawingCanvas) {
+              Polymer.dom(this.root).removeChild(this._drawingCanvas);
+              Polymer.dom.flush()
+            }
+          }
+        },
+
+        _addPoint: function(data) {
+          this._draw++;
+          
+          this._drawingCanvasContext.fillStyle = "#FF0000";
+          this._drawingCanvasContext.fillRect(data.layerX,data.layerY,4,4);
+
+          if(this._draw == 1) {
+            this._area = { topLeft: [data.layerX,data.layerY], bottomRight: [], name:"" }
+          } else {
+            this._area.bottomRight = [
+              data.layerX,
+              data.layerY
+            ];
+            this._area.name = "No name defined";
+            this.push('areas',this._area);
+            this.drawing = false;
+          }
+        },
+
+        _isInArea: function(topLeft,bottomRight){
+          var topLeft = topLeft[0] + topLeft[1];
+          var bottomRight = bottomRight[0] + bottomRight[1];
+
+          for(var k in this.areas) {
+            var areaTopLeft = this.areas[k].topLeft[0] + this.areas[k].topLeft[1];
+            var areaBottomRight = this.areas[k].bottomRight[0] + this.areas[k].bottomRight[1];
+
+            if(topLeft != 1310700 && bottomRight != -20) {
+              if(topLeft >= areaTopLeft && bottomRight <= areaBottomRight) {
+                this.fire("move-detected",this.areas[k])
+              }
+            }
+            
+          }
+        }
+
+      });
+    })();
+
+  </script>
+</dom-module>
