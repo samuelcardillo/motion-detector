@@ -4,7 +4,7 @@
   @thanks         Special thanks to doodloo for the help on performance improvement.
 -->
 
-<link rel="import" href="../../bower_components/polymer/polymer.html">
+<link rel="import" href="bower_components/polymer/polymer.html">
 
 <!--
 Enabling motion detection on video stream with possibility to add detection areas.
@@ -41,14 +41,12 @@ The area drawing take 2 CLICKS. One on the `top left` and one on the `bottom rig
       position: relative;
     }
     :host::content.source {
-      width: 1280px;
-      height:  720px;
       position: absolute;
     }
     canvas {
       position: absolute;
     }
-    #movesBox {
+    #motionBox {
       position: absolute;
       border: 1px solid green;
     }
