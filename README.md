@@ -1,13 +1,13 @@
 # motion-detector
 
-![](http://104.155.19.242/md.gif)
+![Camera Element](http://samuelcardillo.com/motion-detector/md.gif)
 
 I initially did this project in order to turn on the lights of my kitchen when I enter it and then... It ended up here.
 
 ## How does it work ?
 Enabling motion detection on video stream with possibility to add detection areas.
 
-More informations on the [element documentation](http://104.155.19.242/motion-detector).
+More informations on the [element documentation](http://samuelcardillo.com/motion-detector/).
 
 Example:
 
