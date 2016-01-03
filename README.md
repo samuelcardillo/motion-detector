@@ -7,7 +7,7 @@ I initially did this project in order to turn on the lights of my kitchen when I
 ## How does it work ?
 Enabling motion detection on video stream with possibility to add detection areas.
 
-More informations on the [element documentation](http://samuelcardillo.com/motion-detector/).
+More informations on the [element documentation](https://samuelcardillo.com/motion-detector/).
 
 Example:
 
